@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>식단 다이어리</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f7f5f0; --white:#fff; --border:#ece9e2;
+  --text:#1a1814; --muted:#9e9a92;
+  --carb:#f4845f; --prot:#5b8dee; --fat:#f59e0b;
+  --green:#22c55e; --danger:#ef4444;
+  --radius:18px; --shadow:0 2px 16px rgba(0,0,0,.07);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:90px;overflow-x:hidden}
+
+/* NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:10px 0 20px;z-index:100;box-shadow:0 -2px 20px rgba(0,0,0,.06)}
+.nav-btn{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-family:inherit;font-size:10px;padding:4px 20px;transition:color .2s}
+.nav-btn.active{color:var(--text)}
+.nav-icon{font-size:22px;line-height:1}
+
+/* PAGES */
+.page{display:none;max-width:480px;margin:0 auto;padding:0 16px}
+.page.active{display:block}
+
+/* HEADER */
+.page-header{display:flex;justify-content:space-between;align-items:center;padding:52px 0 18px}
+.page-title{font-family:'DM Serif Display',serif;font-size:26px;letter-spacing:-.5px}
+.date-nav{display:flex;align-items:center;gap:6px;background:var(--white);border:1px solid var(--border);border-radius:24px;padding:6px 14px;box-shadow:var(--shadow)}
+.date-nav button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;transition:color .2s;line-height:1}
+.date-nav button:hover{color:var(--text)}
+#date-display{font-size:13px;min-width:88px;text-align:center;font-weight:500;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:center;gap:3px}
+#date-display:active{opacity:.7}
+.cal-icon{font-size:12px;color:var(--muted)}
+
+/* SWIPE */
+#home-swipe{will-change:transform}
+.swipe-out-left{animation:swipeOutL .2s ease forwards}
+.swipe-out-right{animation:swipeOutR .2s ease forwards}
+.enter-from-right{animation:enterR .22s ease forwards}
+.enter-from-left{animation:enterL .22s ease forwards}
+@keyframes swipeOutL{to{transform:translateX(-36px);opacity:0}}
+@keyframes swipeOutR{to{transform:translateX(36px);opacity:0}}
+@keyframes enterR{from{transform:translateX(36px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes enterL{from{transform:translateX(-36px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* SUMMARY CARD */
+.summary-card{background:var(--white);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow);margin-bottom:14px}
+.cal-row{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px}
+.cal-label{font-size:12px;color:var(--muted);margin-bottom:3px}
+.cal-number{font-family:'DM Serif Display',serif;font-size:44px;line-height:1;letter-spacing:-1px}
+.cal-number span{font-size:15px;font-family:inherit;color:var(--muted);margin-left:2px}
+.cal-right{text-align:right}
+.cal-goal-label{font-size:11px;color:var(--muted)}
+.cal-balance{font-size:18px;font-weight:700;margin-top:3px}
+.cal-balance.over{color:var(--danger)}
+.cal-balance.under{color:var(--green)}
+.cal-bar-wrap{background:#f0ede8;border-radius:8px;height:8px;overflow:hidden;margin-bottom:20px}
+.cal-bar-fill{height:100%;border-radius:8px;max-width:100%;background:linear-gradient(90deg,#4ade80,#22c55e);transition:width .5s ease}
+.cal-bar-fill.over{background:linear-gradient(90deg,#f87171,var(--danger))}
+.macro-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.macro-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.macro-label{font-size:12px;font-weight:500;display:flex;align-items:center;gap:4px}
+.macro-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.macro-remain{font-size:10px;color:var(--muted)}
+.macro-remain.over{color:var(--danger)}
+.macro-bar-wrap{background:#f0ede8;border-radius:6px;height:6px;overflow:hidden}
+.macro-bar-fill{height:100%;border-radius:6px;transition:width .4s ease;max-width:100%}
+.macro-nums{margin-top:4px;font-size:11px;color:var(--muted)}
+.macro-nums b{color:var(--text);font-weight:600}
+
+/* FOOD LIST */
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.section-title{font-size:15px;font-weight:700}
+.add-btn{background:var(--text);color:var(--white);border:none;border-radius:20px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .2s}
+.add-btn:hover{opacity:.8}
+.food-list{display:flex;flex-direction:column;gap:8px}
+.food-item{background:var(--white);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);display:flex;justify-content:space-between;align-items:center;animation:slideIn .22s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.food-name{font-size:15px;font-weight:500;margin-bottom:4px}
+.food-macros{font-size:12px;color:var(--muted);display:flex;gap:8px}
+.food-macros .c{color:var(--carb);font-weight:600}
+.food-macros .p{color:var(--prot);font-weight:600}
+.food-macros .f{color:var(--fat);font-weight:600}
+.food-right{display:flex;align-items:center;gap:12px}
+.food-cal{font-size:18px;font-weight:700;text-align:right}
+.food-cal span{display:block;font-size:11px;font-weight:400;color:var(--muted)}
+.del-btn{background:none;border:none;cursor:pointer;color:#d0ccc6;font-size:20px;line-height:1;transition:color .2s;padding:2px}
+.del-btn:hover{color:var(--danger)}
+.empty-state{text-align:center;padding:44px 20px;color:var(--muted);font-size:14px;background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow)}
+.empty-state .emoji{font-size:40px;margin-bottom:10px}
+.empty-state p{line-height:1.7}
+
+/* CALENDAR MODAL */
+.cal-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;align-items:flex-end;justify-content:center}
+.cal-modal-overlay.open{display:flex}
+.cal-modal{background:var(--white);border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:0 20px 40px;animation:slideUp .28s cubic-bezier(.34,1.56,.64,1)}
+.cal-handle{width:38px;height:4px;background:#e0ddd7;border-radius:2px;margin:14px auto 16px}
+.cal-modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.cal-modal-title{font-size:16px;font-weight:700}
+.cal-month-nav{display:flex;align-items:center;gap:12px}
+.cal-month-nav button{background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;line-height:1;transition:color .2s}
+.cal-month-nav button:hover{color:var(--text)}
+#cal-month-label{font-size:14px;font-weight:600;min-width:72px;text-align:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-dow{text-align:center;font-size:11px;color:var(--muted);padding:4px 0 8px;font-weight:600}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:13px;border-radius:50%;cursor:pointer;transition:background .15s;position:relative}
+.cal-day:hover{background:var(--bg)}
+.cal-day.today{font-weight:700;color:var(--prot)}
+.cal-day.selected{background:var(--text);color:#fff!important}
+.cal-day.has-data::after{content:'';position:absolute;bottom:3px;width:4px;height:4px;border-radius:50%;background:var(--green)}
+.cal-day.selected::after{background:#fff}
+.cal-day.empty{cursor:default;pointer-events:none}
+.cal-day.other-month{color:#d0ccc8}
+
+/* FOOD MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--white);border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:0 22px 44px;animation:slideUp .28s cubic-bezier(.34,1.56,.64,1)}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:38px;height:4px;background:#e0ddd7;border-radius:2px;margin:14px auto 18px}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:18px}
+.input-group{margin-bottom:14px;position:relative}
+.input-label{font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500;letter-spacing:.3px;display:block}
+.macro-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+input[type=text],input[type=number]{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;font-size:15px;font-family:inherit;color:var(--text);outline:none;transition:border-color .2s;-webkit-appearance:none}
+input:focus{border-color:var(--text)}
+.ac-list{position:absolute;top:100%;left:0;right:0;background:var(--white);border:1.5px solid var(--border);border-top:none;border-radius:0 0 12px 12px;z-index:10;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.1);display:none}
+.ac-list.show{display:block}
+.ac-item{padding:11px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);transition:background .15s}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover{background:var(--bg)}
+.ac-name{font-size:14px;font-weight:500}
+.ac-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.ac-cal{font-size:13px;font-weight:600;color:var(--muted)}
+.submit-btn{width:100%;background:var(--text);color:var(--white);border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:8px;transition:opacity .2s}
+.submit-btn:hover{opacity:.85}
+
+/* STATS */
+.weight-add-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:14px}
+.card-label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px}
+.weight-add-row{display:flex;gap:10px;align-items:flex-end}
+.weight-add-row .input-group{flex:1;margin-bottom:0}
+.weight-add-btn{background:var(--text);color:var(--white);border:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;transition:opacity .2s}
+.weight-add-btn:hover{opacity:.8}
+.chart-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:14px}
+.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.chart-title{font-size:15px;font-weight:700}
+.period-tabs{display:flex;gap:4px}
+.period-tab{background:none;border:1.5px solid var(--border);border-radius:8px;padding:4px 12px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--muted);transition:all .2s}
+.period-tab.active{background:var(--text);color:#fff;border-color:var(--text)}
+.weight-log{margin-top:14px;display:flex;flex-direction:column}
+.weight-entry{display:flex;justify-content:space-between;align-items:center;padding:10px 2px;border-bottom:1px solid var(--border)}
+.weight-entry:last-child{border-bottom:none}
+.w-date{font-size:13px;color:var(--muted)}
+.w-val{font-size:16px;font-weight:700}
+.w-diff{font-size:12px;margin-left:6px}
+.w-diff.up{color:var(--danger)}
+.w-diff.down{color:var(--green)}
+.w-right{display:flex;align-items:center;gap:10px}
+.w-del{background:none;border:none;color:#d0ccc6;cursor:pointer;font-size:16px;transition:color .2s}
+.w-del:hover{color:var(--danger)}
+.empty-chart{height:100px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}
+
+/* SETTINGS */
+.settings-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:14px}
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--border)}
+.setting-row:last-of-type{border-bottom:none}
+.setting-label{font-size:15px}
+.setting-input{width:100px;text-align:right;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:7px 10px;font-size:15px;font-family:inherit;color:var(--text);outline:none;transition:border-color .2s}
+.setting-input:focus{border-color:var(--text)}
+.macro-preview{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:12px 0 16px}
+.macro-prev-item{background:var(--bg);border-radius:10px;padding:12px;text-align:center}
+.macro-prev-label{font-size:11px;color:var(--muted);margin-bottom:4px}
+.macro-prev-val{font-size:17px;font-weight:700}
+.save-btn{width:100%;background:var(--text);color:var(--white);border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .2s}
+.save-btn:hover{opacity:.85}
+
+/* BACKUP */
+.backup-row{display:flex;gap:8px;margin-bottom:10px}
+.backup-btn{flex:1;border:1.5px solid var(--border);background:var(--white);color:var(--text);border-radius:12px;padding:13px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px}
+.backup-btn:hover{background:var(--bg)}
+.backup-btn.danger{border-color:#fca5a5;color:var(--danger)}
+.backup-btn.danger:hover{background:#fff5f5}
+
+/* TOAST */
+.toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:#1a1814;color:#fff;padding:10px 22px;border-radius:20px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:400;white-space:nowrap;font-weight:500}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<!-- ══════════ HOME ══════════ -->
+<div class="page active" id="page-home">
+  <div class="page-header">
+    <div class="page-title">오늘의 식단</div>
+    <div class="date-nav">
+      <button onclick="changeDate(-1)">‹</button>
+      <span id="date-display" onclick="openCalendar()">오늘 <span class="cal-icon">📅</span></span>
+      <button onclick="changeDate(1)">›</button>
+    </div>
+  </div>
+  <div id="home-swipe">
+    <div class="summary-card">
+      <div class="cal-row">
+        <div>
+          <div class="cal-label">섭취 칼로리</div>
+          <div class="cal-number" id="cal-consumed">0<span>kcal</span></div>
+        </div>
+        <div class="cal-right">
+          <div class="cal-goal-label">목표 <span id="cal-goal-display">2000</span>kcal</div>
+          <div class="cal-balance under" id="cal-balance">2000 kcal 남음</div>
+        </div>
+      </div>
+      <div class="cal-bar-wrap"><div class="cal-bar-fill" id="cal-bar" style="width:0%"></div></div>
+      <div class="macro-grid">
+        <div>
+          <div class="macro-header">
+            <div class="macro-label"><div class="macro-dot" style="background:var(--carb)"></div>탄수화물</div>
+            <div class="macro-remain" id="carb-remain">-g</div>
+          </div>
+          <div class="macro-bar-wrap"><div class="macro-bar-fill" id="carb-bar" style="width:0%;background:var(--carb)"></div></div>
+          <div class="macro-nums"><b id="carb-eaten">0</b> / <span id="carb-goal">250</span>g</div>
+        </div>
+        <div>
+          <div class="macro-header">
+            <div class="macro-label"><div class="macro-dot" style="background:var(--prot)"></div>단백질</div>
+            <div class="macro-remain" id="prot-remain">-g</div>
+          </div>
+          <div class="macro-bar-wrap"><div class="macro-bar-fill" id="prot-bar" style="width:0%;background:var(--prot)"></div></div>
+          <div class="macro-nums"><b id="prot-eaten">0</b> / <span id="prot-goal">150</span>g</div>
+        </div>
+        <div>
+          <div class="macro-header">
+            <div class="macro-label"><div class="macro-dot" style="background:var(--fat)"></div>지방</div>
+            <div class="macro-remain" id="fat-remain">-g</div>
+          </div>
+          <div class="macro-bar-wrap"><div class="macro-bar-fill" id="fat-bar" style="width:0%;background:var(--fat)"></div></div>
+          <div class="macro-nums"><b id="fat-eaten">0</b> / <span id="fat-goal">44</span>g</div>
+        </div>
+      </div>
+    </div>
+    <div class="section-header">
+      <div class="section-title">오늘 먹은 것</div>
+      <button class="add-btn" onclick="openModal()">＋ 추가</button>
+    </div>
+    <div class="food-list" id="food-list"></div>
+  </div>
+</div>
+
+<!-- ══════════ STATS ══════════ -->
+<div class="page" id="page-stats">
+  <div class="page-header"><div class="page-title">체중 기록</div></div>
+  <div class="weight-add-card">
+    <div class="card-label">체중 입력</div>
+    <div class="weight-add-row">
+      <div class="input-group">
+        <label class="input-label">오늘 체중 (kg)</label>
+        <input type="number" id="weight-input" placeholder="예: 65.5" step="0.1" min="20" max="300">
+      </div>
+      <button class="weight-add-btn" onclick="addWeight()">기록</button>
+    </div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-title">체중 변화</div>
+      <div class="period-tabs">
+        <button class="period-tab active" id="tab-week" onclick="setPeriod('week')">주간</button>
+        <button class="period-tab" id="tab-month" onclick="setPeriod('month')">월간</button>
+      </div>
+    </div>
+    <div id="weight-chart-wrap"></div>
+    <div class="weight-log" id="weight-log"></div>
+  </div>
+</div>
+
+<!-- ══════════ SETTINGS ══════════ -->
+<div class="page" id="page-settings">
+  <div class="page-header"><div class="page-title">설정</div></div>
+  <div class="settings-card">
+    <div class="card-label" style="margin-bottom:0">목표 설정</div>
+    <div class="setting-row">
+      <div class="setting-label">목표 칼로리</div>
+      <input type="number" class="setting-input" id="setting-cal" placeholder="2000" min="500" max="5000" oninput="updateMacroPreview()">
+    </div>
+    <div class="setting-row" style="border-bottom:none">
+      <div class="setting-label">목표 체중 (kg)</div>
+      <input type="number" class="setting-input" id="setting-weight" placeholder="60" step="0.1">
+    </div>
+  </div>
+  <div class="settings-card">
+    <div class="card-label" style="margin-bottom:10px">탄단지 자동 계산 (탄 50% / 단 30% / 지 20%)</div>
+    <div class="macro-preview">
+      <div class="macro-prev-item">
+        <div class="macro-prev-label" style="color:var(--carb)">탄수화물</div>
+        <div class="macro-prev-val" id="prev-carb">250g</div>
+      </div>
+      <div class="macro-prev-item">
+        <div class="macro-prev-label" style="color:var(--prot)">단백질</div>
+        <div class="macro-prev-val" id="prev-prot">150g</div>
+      </div>
+      <div class="macro-prev-item">
+        <div class="macro-prev-label" style="color:var(--fat)">지방</div>
+        <div class="macro-prev-val" id="prev-fat">44g</div>
+      </div>
+    </div>
+    <button class="save-btn" onclick="saveSettings()">저장</button>
+  </div>
+  <div class="settings-card">
+    <div class="card-label" style="margin-bottom:8px">데이터 백업 / 복원</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6">모든 데이터를 JSON 파일로 내보내거나, 백업 파일을 불러올 수 있어요.</div>
+    <div class="backup-row">
+      <button class="backup-btn" onclick="exportData()">📤 내보내기</button>
+      <button class="backup-btn" onclick="document.getElementById('import-file').click()">📥 가져오기</button>
+    </div>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    <button class="backup-btn danger" style="width:100%" onclick="resetAllData()">🗑️ 모든 데이터 초기화</button>
+  </div>
+</div>
+
+<!-- ══════════ BOTTOM NAV ══════════ -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="nav-home" onclick="showPage('home')">
+    <div class="nav-icon">🥗</div><span>식단</span>
+  </button>
+  <button class="nav-btn" id="nav-stats" onclick="showPage('stats')">
+    <div class="nav-icon">📈</div><span>체중</span>
+  </button>
+  <button class="nav-btn" id="nav-settings" onclick="showPage('settings')">
+    <div class="nav-icon">⚙️</div><span>설정</span>
+  </button>
+</nav>
+
+<!-- ══════════ CALENDAR MODAL ══════════ -->
+<div class="cal-modal-overlay" id="cal-overlay" onclick="handleCalOverlay(event)">
+  <div class="cal-modal">
+    <div class="cal-handle"></div>
+    <div class="cal-modal-header">
+      <div class="cal-modal-title">날짜 선택</div>
+      <div class="cal-month-nav">
+        <button onclick="calChangeMonth(-1)">‹</button>
+        <span id="cal-month-label"></span>
+        <button onclick="calChangeMonth(1)">›</button>
+      </div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+</div>
+
+<!-- ══════════ FOOD MODAL ══════════ -->
+<div class="modal-overlay" id="modal-overlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">음식 추가</div>
+    <div class="input-group">
+      <label class="input-label">음식 이름</label>
+      <input type="text" id="inp-name" placeholder="예: 닭가슴살 100g" autocomplete="off"
+        oninput="onNameInput()" onkeydown="onNameKey(event)">
+      <div class="ac-list" id="ac-list"></div>
+    </div>
+    <div class="input-group">
+      <label class="input-label">칼로리 (kcal)</label>
+      <input type="number" id="inp-cal" placeholder="예: 165" min="0" max="9999">
+    </div>
+    <div class="input-group">
+      <label class="input-label">탄단지 (g) — 모르면 비워도 돼요</label>
+      <div class="macro-row">
+        <input type="number" id="inp-carb" placeholder="탄수화물" min="0" max="999" step="0.1">
+        <input type="number" id="inp-prot" placeholder="단백질"   min="0" max="999" step="0.1">
+        <input type="number" id="inp-fat"  placeholder="지방"     min="0" max="999" step="0.1">
+      </div>
+    </div>
+    <button class="submit-btn" onclick="addFood()">추가하기</button>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────
+let currentDate = todayStr();
+let chartPeriod = 'week';
+let calViewYear, calViewMonth;
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function pad(n) { return String(n).padStart(2,'0'); }
+
+// ── STORAGE ────────────────────────────────────
+function ls(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}}
+function ss(k,v){localStorage.setItem(k,JSON.stringify(v))}
+const getSettings  = ()  => ls('cfg',{goalCal:2000,goalWeight:null});
+const getFoodLog   = d   => ls(`food_${d}`,[]);
+const saveFoodLog  = (d,a)=> ss(`food_${d}`,a);
+const getWeightLog = ()  => ls('weight',[]);
+const saveWeightLog= a   => ss('weight',a);
+const getFoodDB    = ()  => ls('fooddb',[]);
+const saveFoodDB   = a   => ss('fooddb',a);
+
+// ── NAV ────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`page-${name}`).classList.add('active');
+  document.getElementById(`nav-${name}`).classList.add('active');
+  if(name==='stats') renderStats();
+  if(name==='settings') renderSettingsPage();
+}
+
+// ── SWIPE ──────────────────────────────────────
+let tx=0, ty=0, tActive=false;
+const homeEl = document.getElementById('page-home');
+homeEl.addEventListener('touchstart', e=>{
+  if(document.getElementById('modal-overlay').classList.contains('open')) return;
+  if(document.getElementById('cal-overlay').classList.contains('open')) return;
+  tx=e.touches[0].clientX; ty=e.touches[0].clientY; tActive=true;
+},{passive:true});
+homeEl.addEventListener('touchend', e=>{
+  if(!tActive) return; tActive=false;
+  const dx=e.changedTouches[0].clientX-tx;
+  const dy=e.changedTouches[0].clientY-ty;
+  if(Math.abs(dx)<50||Math.abs(dy)>Math.abs(dx)*0.75) return;
+  doSwipe(dx<0?'left':'right');
+},{passive:true});
+
+function doSwipe(dir) {
+  const wrap=document.getElementById('home-swipe');
+  const outCls  = dir==='left'?'swipe-out-left':'swipe-out-right';
+  const inCls   = dir==='left'?'enter-from-right':'enter-from-left';
+  wrap.classList.add(outCls);
+  setTimeout(()=>{
+    wrap.classList.remove(outCls);
+    shiftDate(dir==='left'?1:-1);
+    wrap.classList.add(inCls);
+    setTimeout(()=>wrap.classList.remove(inCls),250);
+  },200);
+}
+
+// ── DATE ───────────────────────────────────────
+function changeDate(delta) { doSwipe(delta>0?'left':'right'); }
+
+function shiftDate(delta) {
+  const d=new Date(currentDate+'T00:00:00');
+  d.setDate(d.getDate()+delta);
+  currentDate=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  renderHome();
+}
+
+function renderDateLabel() {
+  const d=new Date(currentDate+'T00:00:00');
+  const today=todayStr();
+  const dow=['일','월','화','수','목','금','토'][d.getDay()];
+  let label=`${d.getMonth()+1}/${d.getDate()} (${dow})`;
+  if(currentDate===today) label='오늘';
+  else{
+    const diff=Math.round((new Date(currentDate)-new Date(today))/86400000);
+    if(diff===-1) label='어제';
+  }
+  document.getElementById('date-display').innerHTML=`${label} <span class="cal-icon">📅</span>`;
+}
+
+// ── CALENDAR ───────────────────────────────────
+function openCalendar() {
+  const d=new Date(currentDate+'T00:00:00');
+  calViewYear=d.getFullYear(); calViewMonth=d.getMonth();
+  renderCalendar();
+  document.getElementById('cal-overlay').classList.add('open');
+}
+function handleCalOverlay(e){if(e.target===document.getElementById('cal-overlay'))closeCalendar();}
+function closeCalendar(){document.getElementById('cal-overlay').classList.remove('open');}
+function calChangeMonth(delta){
+  calViewMonth+=delta;
+  if(calViewMonth<0){calViewMonth=11;calViewYear--;}
+  if(calViewMonth>11){calViewMonth=0;calViewYear++;}
+  renderCalendar();
+}
+function renderCalendar() {
+  document.getElementById('cal-month-label').textContent=`${calViewYear}.${pad(calViewMonth+1)}`;
+  const grid=document.getElementById('cal-grid');
+  const dows=['일','월','화','수','목','금','토'];
+  let html=dows.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  const firstDay=new Date(calViewYear,calViewMonth,1).getDay();
+  const lastDate=new Date(calViewYear,calViewMonth+1,0).getDate();
+  const today=todayStr();
+  for(let i=0;i<firstDay;i++) html+='<div class="cal-day empty"></div>';
+  for(let d=1;d<=lastDate;d++){
+    const ds=`${calViewYear}-${pad(calViewMonth+1)}-${pad(d)}`;
+    let cls='cal-day';
+    if(ds===today) cls+=' today';
+    if(ds===currentDate) cls+=' selected';
+    if(getFoodLog(ds).length>0) cls+=' has-data';
+    html+=`<div class="${cls}" onclick="selectCalDate('${ds}')">${d}</div>`;
+  }
+  grid.innerHTML=html;
+}
+function selectCalDate(ds) {
+  currentDate=ds; closeCalendar();
+  const wrap=document.getElementById('home-swipe');
+  wrap.classList.add('enter-from-right');
+  renderHome();
+  setTimeout(()=>wrap.classList.remove('enter-from-right'),250);
+}
+
+// ── HOME RENDER ────────────────────────────────
+function renderHome() {
+  renderDateLabel();
+  const cfg=getSettings();
+  const goalCal =cfg.goalCal||2000;
+  const goalCarb=Math.round(goalCal*0.50/4);
+  const goalProt=Math.round(goalCal*0.30/4);
+  const goalFat =Math.round(goalCal*0.20/9);
+  const foods=getFoodLog(currentDate);
+  let tCal=0,tCarb=0,tProt=0,tFat=0;
+  foods.forEach(f=>{tCal+=f.cal||0;tCarb+=f.carb||0;tProt+=f.prot||0;tFat+=f.fat||0;});
+
+  document.getElementById('cal-consumed').innerHTML=`${tCal}<span>kcal</span>`;
+  document.getElementById('cal-goal-display').textContent=goalCal;
+  const diff=goalCal-tCal;
+  const balEl=document.getElementById('cal-balance');
+  if(diff>0){balEl.textContent=`${diff} kcal 남음`;balEl.className='cal-balance under';}
+  else if(diff<0){balEl.textContent=`${Math.abs(diff)} kcal 초과`;balEl.className='cal-balance over';}
+  else{balEl.textContent='목표 달성! 🎉';balEl.className='cal-balance under';}
+
+  const pct=Math.min(100,Math.round(tCal/goalCal*100));
+  const bar=document.getElementById('cal-bar');
+  bar.style.width=pct+'%';
+  bar.className='cal-bar-fill'+(tCal>goalCal?' over':'');
+
+  setMacro('carb',tCarb,goalCarb);
+  setMacro('prot',tProt,goalProt);
+  setMacro('fat', tFat, goalFat);
+
+  const listEl=document.getElementById('food-list');
+  listEl.innerHTML='';
+  if(!foods.length){
+    listEl.innerHTML=`<div class="empty-state"><div class="emoji">🍽️</div><p>아직 기록이 없어요<br>오른쪽 위 추가 버튼을 눌러보세요</p></div>`;
+    return;
+  }
+  foods.forEach((f,i)=>{
+    const el=document.createElement('div');
+    el.className='food-item';
+    const mc=[
+      f.carb!=null?`<span class="c">탄 ${f.carb}g</span>`:'',
+      f.prot!=null?`<span class="p">단 ${f.prot}g</span>`:'',
+      f.fat !=null?`<span class="f">지 ${f.fat}g</span>` :'',
+    ].filter(Boolean).join('');
+    el.innerHTML=`
+      <div>
+        <div class="food-name">${esc(f.name)}</div>
+        <div class="food-macros">${mc||'<span>탄단지 미입력</span>'}</div>
+      </div>
+      <div class="food-right">
+        <div class="food-cal">${f.cal}<span>kcal</span></div>
+        <button class="del-btn" onclick="deleteFood(${i})">×</button>
+      </div>`;
+    listEl.appendChild(el);
+  });
+}
+
+function setMacro(type,eaten,goal){
+  document.getElementById(`${type}-eaten`).textContent=Math.round(eaten);
+  document.getElementById(`${type}-goal`).textContent=goal;
+  const rem=goal-Math.round(eaten);
+  const rl=document.getElementById(`${type}-remain`);
+  if(rem>=0){rl.textContent=`${rem}g 남음`;rl.className='macro-remain';}
+  else{rl.textContent=`${Math.abs(rem)}g 초과`;rl.className='macro-remain over';}
+  document.getElementById(`${type}-bar`).style.width=Math.min(100,Math.round(eaten/goal*100))+'%';
+}
+
+function deleteFood(idx){
+  const foods=getFoodLog(currentDate);
+  foods.splice(idx,1);
+  saveFoodLog(currentDate,foods);
+  renderHome();
+  showToast('삭제했어요');
+}
+
+// ── FOOD MODAL ─────────────────────────────────
+function openModal(){
+  document.getElementById('modal-overlay').classList.add('open');
+  const db=getFoodDB();
+  if(db.length){
+    const last=db.slice().sort((a,b)=>(b.lastUsed||0)-(a.lastUsed||0))[0];
+    document.getElementById('inp-name').value=last.name;
+    document.getElementById('inp-cal').value =last.cal??'';
+    document.getElementById('inp-carb').value=last.carb??'';
+    document.getElementById('inp-prot').value=last.prot??'';
+    document.getElementById('inp-fat').value =last.fat??'';
+    document.getElementById('inp-name').select();
+  } else {
+    ['inp-name','inp-cal','inp-carb','inp-prot','inp-fat'].forEach(id=>document.getElementById(id).value='');
+    setTimeout(()=>document.getElementById('inp-name').focus(),80);
+  }
+}
+function closeModal(){
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.getElementById('ac-list').classList.remove('show');
+}
+function overlayClick(e){if(e.target===document.getElementById('modal-overlay'))closeModal();}
+
+function addFood(){
+  const name=document.getElementById('inp-name').value.trim();
+  const cal =parseFloat(document.getElementById('inp-cal').value);
+  const cv=document.getElementById('inp-carb').value;
+  const pv=document.getElementById('inp-prot').value;
+  const fv=document.getElementById('inp-fat').value;
+  const carb=cv!==''?parseFloat(cv):null;
+  const prot=pv!==''?parseFloat(pv):null;
+  const fat =fv!==''?parseFloat(fv):null;
+  if(!name){showToast('음식 이름을 입력해주세요');return;}
+  if(isNaN(cal)||cal<0){showToast('칼로리를 입력해주세요');return;}
+  const entry={name,cal:Math.round(cal),carb,prot,fat};
+  const foods=getFoodLog(currentDate);
+  foods.push(entry);
+  saveFoodLog(currentDate,foods);
+  const db=getFoodDB();
+  const ex=db.find(d=>d.name.toLowerCase()===name.toLowerCase());
+  if(ex){Object.assign(ex,{cal:entry.cal,carb,prot,fat,lastUsed:Date.now()});}
+  else{db.push({name,cal:entry.cal,carb,prot,fat,lastUsed:Date.now()});}
+  saveFoodDB(db);
+  closeModal();
+  renderHome();
+  showToast(`${name} 추가 완료!`);
+}
+
+// ── AUTOCOMPLETE ───────────────────────────────
+function onNameInput(){
+  const q=document.getElementById('inp-name').value.trim().toLowerCase();
+  const acEl=document.getElementById('ac-list');
+  if(!q){acEl.classList.remove('show');return;}
+  const matches=getFoodDB()
+    .filter(d=>d.name.toLowerCase().includes(q))
+    .sort((a,b)=>(b.lastUsed||0)-(a.lastUsed||0))
+    .slice(0,6);
+  if(!matches.length){acEl.classList.remove('show');return;}
+  acEl.innerHTML=matches.map(m=>{
+    const sub=[m.carb!=null?`탄 ${m.carb}g`:'',m.prot!=null?`단 ${m.prot}g`:'',m.fat!=null?`지 ${m.fat}g`:''].filter(Boolean).join(' · ');
+    return `<div class="ac-item" onclick="selectAC(${JSON.stringify(m.name)})">
+      <div><div class="ac-name">${esc(m.name)}</div>${sub?`<div class="ac-sub">${sub}</div>`:''}</div>
+      <div class="ac-cal">${m.cal}kcal</div>
+    </div>`;
+  }).join('');
+  acEl.classList.add('show');
+}
+function onNameKey(e){if(e.key==='Escape')document.getElementById('ac-list').classList.remove('show');}
+function selectAC(name){
+  const item=getFoodDB().find(d=>d.name===name);
+  if(item){
+    document.getElementById('inp-name').value=item.name;
+    document.getElementById('inp-cal').value =item.cal??'';
+    document.getElementById('inp-carb').value=item.carb??'';
+    document.getElementById('inp-prot').value=item.prot??'';
+    document.getElementById('inp-fat').value =item.fat??'';
+  }
+  document.getElementById('ac-list').classList.remove('show');
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.input-group'))document.getElementById('ac-list').classList.remove('show');
+});
+
+// ── STATS ──────────────────────────────────────
+function addWeight(){
+  const val=parseFloat(document.getElementById('weight-input').value);
+  if(isNaN(val)||val<20||val>300){showToast('올바른 체중을 입력해주세요');return;}
+  const log=getWeightLog();
+  const today=todayStr();
+  const idx=log.findIndex(e=>e.date===today);
+  if(idx>=0)log[idx].val=val;
+  else log.push({date:today,val});
+  log.sort((a,b)=>a.date.localeCompare(b.date));
+  saveWeightLog(log);
+  document.getElementById('weight-input').value='';
+  renderStats();
+  showToast(`${val}kg 기록 완료!`);
+}
+function setPeriod(p){
+  chartPeriod=p;
+  document.getElementById('tab-week').className ='period-tab'+(p==='week' ?' active':'');
+  document.getElementById('tab-month').className='period-tab'+(p==='month'?' active':'');
+  renderStats();
+}
+function renderStats(){
+  const all=getWeightLog();
+  const today=new Date(todayStr()+'T00:00:00');
+  const days=chartPeriod==='week'?7:30;
+  const cutoff=new Date(today); cutoff.setDate(cutoff.getDate()-(days-1));
+  const cs=`${cutoff.getFullYear()}-${pad(cutoff.getMonth()+1)}-${pad(cutoff.getDate())}`;
+  drawChart(all.filter(e=>e.date>=cs));
+  const logEl=document.getElementById('weight-log');
+  const sorted=all.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,14);
+  if(!sorted.length){logEl.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px;">아직 체중 기록이 없어요</div>';return;}
+  logEl.innerHTML=sorted.map((e,i)=>{
+    const prev=sorted[i+1];
+    let diffHtml='';
+    if(prev){
+      const d=(e.val-prev.val).toFixed(1);
+      if(d>0)diffHtml=`<span class="w-diff up">+${d}kg</span>`;
+      else if(d<0)diffHtml=`<span class="w-diff down">${d}kg</span>`;
+    }
+    const dd=new Date(e.date+'T00:00:00');
+    return `<div class="weight-entry">
+      <div class="w-date">${dd.getMonth()+1}/${dd.getDate()}</div>
+      <div class="w-right">
+        <div class="w-val">${e.val}kg ${diffHtml}</div>
+        <button class="w-del" onclick="deleteWeight('${e.date}')">×</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function drawChart(data){
+  const wrap=document.getElementById('weight-chart-wrap');
+  if(data.length<2){wrap.innerHTML='<div class="empty-chart">데이터가 2개 이상 있어야 그래프가 표시돼요</div>';return;}
+  const W=400,H=130,PX=30,PY=14;
+  const vals=data.map(d=>d.val);
+  const minV=Math.min(...vals)-0.5,maxV=Math.max(...vals)+0.5;
+  const minT=new Date(data[0].date+'T00:00:00').getTime();
+  const maxT=new Date(data[data.length-1].date+'T00:00:00').getTime();
+  const tR=maxT-minT||1;
+  const x=d=>PX+(new Date(d+'T00:00:00').getTime()-minT)/tR*(W-PX*2);
+  const y=v=>PY+(1-(v-minV)/(maxV-minV))*(H-PY*2);
+  const pts=data.map(d=>`${x(d.date).toFixed(1)},${y(d.val).toFixed(1)}`).join(' ');
+  const fp=`${pts} ${x(data[data.length-1].date).toFixed(1)},${H} ${x(data[0].date).toFixed(1)},${H}`;
+  const dots=data.map(d=>`<circle cx="${x(d.date).toFixed(1)}" cy="${y(d.val).toFixed(1)}" r="3.5" fill="#5b8dee" stroke="white" stroke-width="2"/>`).join('');
+  const ylbls=[minV+0.5,(minV+maxV)/2,maxV-0.5].map(v=>`<text x="2" y="${y(v).toFixed(1)}" font-size="9.5" fill="#9e9a92" dominant-baseline="middle">${v.toFixed(1)}</text>`).join('');
+  wrap.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:140px;overflow:visible">
+    <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5b8dee" stop-opacity=".2"/>
+      <stop offset="100%" stop-color="#5b8dee" stop-opacity=".02"/>
+    </linearGradient></defs>
+    ${ylbls}
+    <polygon points="${fp}" fill="url(#cg)"/>
+    <polyline points="${pts}" fill="none" stroke="#5b8dee" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}
+  </svg>`;
+}
+function deleteWeight(date){
+  saveWeightLog(getWeightLog().filter(e=>e.date!==date));
+  renderStats();showToast('삭제했어요');
+}
+
+// ── SETTINGS ───────────────────────────────────
+function renderSettingsPage(){
+  const cfg=getSettings();
+  document.getElementById('setting-cal').value   =cfg.goalCal||2000;
+  document.getElementById('setting-weight').value=cfg.goalWeight||'';
+  updateMacroPreview();
+}
+function updateMacroPreview(){
+  const cal=parseInt(document.getElementById('setting-cal').value)||2000;
+  document.getElementById('prev-carb').textContent=Math.round(cal*0.50/4)+'g';
+  document.getElementById('prev-prot').textContent=Math.round(cal*0.30/4)+'g';
+  document.getElementById('prev-fat').textContent =Math.round(cal*0.20/9)+'g';
+}
+function saveSettings(){
+  const cal=parseInt(document.getElementById('setting-cal').value);
+  const wt =parseFloat(document.getElementById('setting-weight').value);
+  if(isNaN(cal)||cal<500){showToast('올바른 칼로리를 입력해주세요');return;}
+  ss('cfg',{goalCal:cal,goalWeight:isNaN(wt)?null:wt});
+  renderHome();showToast('저장 완료! ✓');
+}
+
+// ── BACKUP / RESTORE ───────────────────────────
+function exportData(){
+  // 모든 localStorage 키 수집
+  const data={};
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    try{data[k]=JSON.parse(localStorage.getItem(k));}
+    catch{data[k]=localStorage.getItem(k);}
+  }
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const today=todayStr();
+  a.href=url; a.download=`식단다이어리_백업_${today}.json`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  showToast('백업 파일을 다운로드했어요 📤');
+}
+
+function importData(e){
+  const file=e.target.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      if(!confirm('기존 데이터를 백업 파일로 덮어쓸까요?\n현재 데이터는 사라져요.')) return;
+      Object.entries(data).forEach(([k,v])=>ss(k,v));
+      renderHome();
+      showToast('데이터를 불러왔어요 ✓');
+    } catch {
+      showToast('파일 형식이 올바르지 않아요');
+    }
+    e.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+function resetAllData(){
+  if(!confirm('정말 모든 데이터를 삭제할까요?\n이 작업은 되돌릴 수 없어요.')) return;
+  localStorage.clear();
+  renderHome();
+  showToast('모든 데이터를 초기화했어요');
+}
+
+// ── UTILS ──────────────────────────────────────
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2200);
+}
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── INIT ───────────────────────────────────────
+renderHome();
+</script>
+</body>
+</html>
